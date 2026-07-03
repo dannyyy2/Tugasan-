@@ -24,17 +24,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rateValue = (float) $rate;
 
         $powerWatts = $voltageValue * $currentValue;
-        $energyPerHour = $powerWatts / 1000;
+        $powerKilowatts = $powerWatts / 1000;
+        $energyPerHour = $powerKilowatts;
         $energyPerDay = $energyPerHour * 24;
         $totalPerHour = $energyPerHour * ($rateValue / 100);
         $totalPerDay = $energyPerDay * ($rateValue / 100);
+        $rateInRm = $rateValue / 100;
+        $tableRows = [];
+
+        for ($hour = 1; $hour <= 24; $hour++) {
+            $tableRows[] = [
+                'hour' => $hour,
+                'energy' => $energyPerHour * $hour,
+                'total' => $totalPerHour * $hour,
+            ];
+        }
 
         $results = [
             'powerWatts' => $powerWatts,
+            'powerKilowatts' => $powerKilowatts,
             'energyPerHour' => $energyPerHour,
             'energyPerDay' => $energyPerDay,
             'totalPerHour' => $totalPerHour,
             'totalPerDay' => $totalPerDay,
+            'rateInRm' => $rateInRm,
+            'tableRows' => $tableRows,
         ];
     }
 }
@@ -47,6 +61,12 @@ function displayValue($value)
 function formatNumber($value)
 {
     return number_format((float) $value, 4);
+}
+
+function formatTableNumber($value, $decimals = 5)
+{
+    $formatted = number_format((float) $value, $decimals, '.', '');
+    return rtrim(rtrim($formatted, '0'), '.');
 }
 ?>
 <!DOCTYPE html>
@@ -80,6 +100,30 @@ function formatNumber($value)
             border-radius: 8px;
             padding: 16px;
         }
+
+        .summary-box {
+            background-color: #ffffff;
+            border: 1px solid #b8d6ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+            margin-bottom: 24px;
+        }
+
+        .summary-box p {
+            color: #003f88;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .summary-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            border-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -89,9 +133,7 @@ function formatNumber($value)
                 <div class="card calculator-card">
                     <div class="card-body p-4 p-md-5">
                         <h1 class="h3 mb-3">Electricity Consumption Calculator</h1>
-                        <p class="text-muted">
-                            Calculate power, energy usage, and total electricity charge per hour and per day.
-                        </p>
+                        <p class="text-muted">Calculate power, energy usage, and total electricity charge up to 24 hours.</p>
 
                         <div class="formula-box mb-4">
                             <h2 class="h5">Formulas Used</h2>
@@ -165,30 +207,32 @@ function formatNumber($value)
                         <?php if ($results): ?>
                             <hr class="my-4">
 
-                            <h2 class="h4 mb-3">Results</h2>
-
-                            <div class="result-box">
-                                <h3 class="h5">Power</h3>
-                                <p class="mb-0">
-                                    <?php echo formatNumber($results['powerWatts']); ?> W
-                                </p>
+                            <div class="summary-box">
+                                <p>Power : <?php echo formatTableNumber($results['powerKilowatts']); ?>kw</p>
+                                <p>Rate : <?php echo formatTableNumber($results['rateInRm'], 3); ?>RM</p>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="result-box">
-                                        <h3 class="h5">Per Hour</h3>
-                                        <p class="mb-1">Energy: <?php echo formatNumber($results['energyPerHour']); ?> kWh</p>
-                                        <p class="mb-0">Total Charge: RM <?php echo formatNumber($results['totalPerHour']); ?></p>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="result-box">
-                                        <h3 class="h5">Per Day</h3>
-                                        <p class="mb-1">Energy: <?php echo formatNumber($results['energyPerDay']); ?> kWh</p>
-                                        <p class="mb-0">Total Charge: RM <?php echo formatNumber($results['totalPerDay']); ?></p>
-                                    </div>
-                                </div>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Hour</th>
+                                            <th>Energy (kWh)</th>
+                                            <th>Total (RM)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($results['tableRows'] as $index => $row): ?>
+                                            <tr>
+                                                <td><?php echo $index + 1; ?></td>
+                                                <td><?php echo $row['hour']; ?></td>
+                                                <td><?php echo formatTableNumber($row['energy']); ?></td>
+                                                <td><?php echo formatTableNumber($row['total'], 2); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         <?php endif; ?>
                     </div>
